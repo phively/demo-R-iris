@@ -1,0 +1,105 @@
+---
+title: "R Markdown demo with iris dataset"
+author: "Paul Hively"
+date: "March 29, 2016"
+output: html_document
+---
+
+Experimenting with R Markdown. We'll use the iris dataset:
+
+```{r}
+## Read in and summarize the data
+data(iris)
+str(iris)
+summary(iris)
+```
+
+We see that there are 150 total observations of anatomical characteristics of three iris species. A visualization using `ggplot2`:
+
+```{r, echo=F}
+library(ggplot2) #needs to be installed if unavailable
+library(grid)
+library(gridExtra) #lay out graphics in a matrix
+
+# ggplot objects
+g1 <- ggplot(data=iris, aes(y=Sepal.Width, x=Sepal.Length, color=Species)) + geom_point(alpha=.5)
+g2 <- ggplot(data=iris, aes(y=Petal.Length, x=Sepal.Length, color=Species)) + geom_point(alpha=.5)
+g3 <- ggplot(data=iris, aes(y=Petal.Width, x=Sepal.Length, color=Species)) + geom_point(alpha=.5)
+g4 <- ggplot(data=iris, aes(y=Petal.Length, x=Sepal.Width, color=Species)) + geom_point(alpha=.5)
+g5 <- ggplot(data=iris, aes(y=Petal.Width, x=Sepal.Width, color=Species)) + geom_point(alpha=.5)
+g6 <- ggplot(data=iris, aes(y=Petal.Width, x=Petal.Length, color=Species)) + geom_point(alpha=.5)
+gbl <- ggplot(data=iris) + theme(panel.background = element_rect(fill="white"))
+
+# Share a legend between ggplot objects; see https://github.com/hadley/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs
+grid_arrange_shared_legend <- function(...) {
+    plots <- list(...)
+    g <- ggplotGrob(plots[[1]] + theme(legend.position="bottom"))$grobs
+    legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+    lheight <- sum(legend$height)
+    grid.arrange(
+        do.call(arrangeGrob, lapply(plots, function(x)
+            x + theme(legend.position="none"))),
+        legend,
+        ncol = 1,
+        heights = unit.c(unit(1, "npc") - lheight, lheight))
+}
+
+# Arrange in a grid
+grid_arrange_shared_legend(g1, gbl, gbl, g2, g4, gbl, g3, g5, g6)
+```
+
+Observations:
+
+  - The *setosa* species is not like the others; it can be distinguished just on the basis of petal size
+  - It doesn't look like *versicolor* and *virginica* can be completely separated
+
+Try the linear discriminant as implemented in `MASS`.
+
+$$h(x)=\operatorname{argmax}\Big[\hat{\mu}_{c}^{T}\Sigma^{-1}x-\frac{1}{2}\hat{\mu}_{c}^{T}\hat\Sigma^{-1}{\mu}_{c}\Big]$$
+
+```{r}
+library(MASS)
+(iris.lda <- lda(Species ~ ., data=iris)) #enclosing in () makes R print the output
+# Confusion matrix
+table(Predicted=predict(iris.lda, iris[,1:4])$class,
+      Actual=iris$Species)
+```
+
+Not half bad. But from the scatter plots we can get away with just petal length and width:
+
+```{r}
+(iris.lda <- lda(Species ~ Petal.Length + Petal.Width, data=iris))
+# Confusion matrix
+table(Predicted=predict(iris.lda, iris[,1:4])$class,
+      Actual=iris$Species)
+```
+
+Not quite as clean, but cutting in half the number of features to be measured is (probably?) a win. Let's visualize the decision boundaries:
+
+```{r, echo=F}
+library(ggplot2)
+
+# Function to manually calculate the LDA coefficients (is there a way to do this from lda()?)
+cf <- function(x1, y1, x2, y2){
+  center = c((x1+x2)/2, (y1+y2)/2)
+  slope = -1/((y2-y1)/(x2-x1))
+  intercept = center[2] - slope*center[1]
+  return(list(center=center, slope=slope, intercept=intercept))
+}
+
+# Coefficients
+beta1 <- cf(iris.lda$means["setosa",2], iris.lda$means["setosa",1], iris.lda$means["versicolor",2], iris.lda$means["versicolor",1])
+beta2 <- cf(iris.lda$means["versicolor",2], iris.lda$means["versicolor",1], iris.lda$means["virginica",2], iris.lda$means["virginica",1])
+# Plot
+ggplot(data=iris, aes(x=Petal.Width, y=Petal.Length, color=Species)) + geom_point(alpha=.5) +
+  # Connect the center of classes 1 and 2
+  geom_segment(aes(x=iris.lda$means["setosa",2], xend=iris.lda$means["versicolor",2], y=iris.lda$means["setosa",1],  yend=iris.lda$means["versicolor",1]), linetype="dotted") +
+  # Connect the center of classes 2 and 3
+  geom_segment(aes(x=iris.lda$means["versicolor",2], xend=iris.lda$means["virginica",2], y=iris.lda$means["versicolor",1], yend=iris.lda$means["virginica",1]), linetype="dotted") +
+  # Decision boundaries
+  geom_abline(intercept=beta1$intercept, slope=beta1$slope, alpha=.25) + #class 1-2 boundary
+  geom_abline(intercept=beta2$intercept, slope=beta2$slope, alpha=.25) + #class 2-3 boundary
+  coord_fixed() #fix the aspect ratio
+```
+
+The darker points indicate overplotting, so the visual count of errors does line up with the confusion matrix above.
