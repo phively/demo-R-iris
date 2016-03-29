@@ -74,7 +74,7 @@ table(Predicted=predict(iris.lda, iris[,1:4])$class,
       Actual=iris$Species)
 ```
 
-Not quite as clean, but cutting in half the number of features to be measured is (probably?) a win. Let's visualize the decision boundaries:
+Not quite as clean, but cutting in half the number of features to be measured is (probably?) a win. Let's visualize the (approximate) decision boundaries:
 
 ```{r, echo=F}
 library(ggplot2)
@@ -86,6 +86,9 @@ cf <- function(x1, y1, x2, y2){
   intercept = center[2] - slope*center[1]
   return(list(center=center, slope=slope, intercept=intercept))
 }
+
+# Using the definition of LDA
+
 
 # Coefficients
 beta1 <- cf(iris.lda$means["setosa",2], iris.lda$means["setosa",1], iris.lda$means["versicolor",2], iris.lda$means["versicolor",1])
