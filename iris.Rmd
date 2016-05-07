@@ -5,7 +5,7 @@ date: "March 29, 2016"
 output: html_document
 ---
 
-Experimenting with R Markdown. We'll use the iris dataset:
+Experimenting with R Markdown. The source is available [here](https://github.com/phively/demo-R-iris/blob/master/iris.Rmd). We'll use the iris dataset:
 
 ```{r}
 ## Read in and summarize the data
@@ -16,7 +16,7 @@ summary(iris)
 
 We see that there are 150 total observations of anatomical characteristics of three iris species. A visualization using `ggplot2`:
 
-```{r, echo=F}
+```{r correlations, echo=F}
 library(ggplot2) #needs to be installed if unavailable
 library(grid)
 library(gridExtra) #lay out graphics in a matrix
@@ -76,7 +76,7 @@ table(Predicted=predict(iris.lda, iris[,1:4])$class,
 
 Not quite as clean, but cutting in half the number of features to be measured is (probably?) a win. Let's visualize the (approximate) decision boundaries:
 
-```{r, echo=F}
+```{r centered-boundaries, echo=F}
 library(ggplot2)
 
 # Function to manually calculate the LDA coefficients (is there a way to do this from lda()?)
@@ -86,9 +86,6 @@ cf <- function(x1, y1, x2, y2){
   intercept = center[2] - slope*center[1]
   return(list(center=center, slope=slope, intercept=intercept))
 }
-
-# Using the definition of LDA
-
 
 # Coefficients
 beta1 <- cf(iris.lda$means["setosa",2], iris.lda$means["setosa",1], iris.lda$means["versicolor",2], iris.lda$means["versicolor",1])
@@ -106,3 +103,5 @@ ggplot(data=iris, aes(x=Petal.Width, y=Petal.Length, color=Species)) + geom_poin
 ```
 
 The darker points indicate overplotting, so the visual count of errors does line up with the confusion matrix above.
+
+To show the actual boundaries I'd need to account for the relative covariances of the classes; not sure how to grab this from the model object but it can be done by hand. Doesn't seem worthwhile for this example, though, so I'll just trust `MASS` is doing its job, right?

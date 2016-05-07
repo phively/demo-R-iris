@@ -1,0 +1,15 @@
+*.Rproj.user
+*.Rproj
+*.Rhistory
+*.RData
+*.csv
+*.txt
+*_cache
+*_files
+*.html
+*.xls
+*.xlsx
+*.md
+.Rproj.user
+README.md
+Git Bash.lnk
